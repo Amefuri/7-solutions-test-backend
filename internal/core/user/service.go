@@ -1,6 +1,7 @@
 package user
 
 import (
+	"7-solutions-test-backend/internal/util"
 	"context"
 	"errors"
 	"time"
@@ -17,6 +18,28 @@ func NewService(repo Repository) *Service {
 }
 
 func (s *Service) Register(ctx context.Context, name, email, password string) (*User, error) {
+
+	// Validate required fields
+	if name == "" {
+		return nil, errors.New("name is required")
+	}
+	if email == "" {
+		return nil, errors.New("email is required")
+	}
+	if password == "" {
+		return nil, errors.New("password is required")
+	}
+
+	// Validate email format
+	if !util.ValidateEmail(email) {
+		return nil, errors.New("invalid email format")
+	}
+
+	// Validate password length
+	if len(password) < 8 {
+		return nil, errors.New("password must be at least 8 characters long")
+	}
+
 	existing, err := s.repo.GetByEmail(ctx, email)
 	if err != nil {
 		return nil, errors.New("error getting user by email: " + err.Error())
@@ -51,6 +74,20 @@ func (s *Service) List(ctx context.Context) ([]*User, error) {
 }
 
 func (s *Service) Update(ctx context.Context, user *User) error {
+
+	// Validate required fields
+	if user.Name == "" {
+		return errors.New("name is required")
+	}
+	if user.Email == "" {
+		return errors.New("email is required")
+	}
+
+	// Validate email format
+	if !util.ValidateEmail(user.Email) {
+		return errors.New("invalid email format")
+	}
+
 	return s.repo.Update(ctx, user)
 }
 

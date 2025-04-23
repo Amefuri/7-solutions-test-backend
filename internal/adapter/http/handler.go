@@ -3,7 +3,6 @@ package http
 import (
 	"7-solutions-test-backend/internal/auth"
 	"7-solutions-test-backend/internal/core/user"
-	"7-solutions-test-backend/internal/util"
 	"net/http"
 
 	"github.com/labstack/echo/v4"
@@ -37,27 +36,6 @@ func (h *Handler) Register(c echo.Context) error {
 	})
 	if err := c.Bind(req); err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, "Invalid request format")
-	}
-
-	// Validate required fields
-	if req.Name == "" {
-		return echo.NewHTTPError(http.StatusBadRequest, "Name is required")
-	}
-	if req.Email == "" {
-		return echo.NewHTTPError(http.StatusBadRequest, "Email is required")
-	}
-	if req.Password == "" {
-		return echo.NewHTTPError(http.StatusBadRequest, "Password is required")
-	}
-
-	// Validate email format
-	if !util.ValidateEmail(req.Email) {
-		return echo.NewHTTPError(http.StatusBadRequest, "Invalid email format")
-	}
-
-	// Validate password length
-	if len(req.Password) < 8 {
-		return echo.NewHTTPError(http.StatusBadRequest, "Password must be at least 8 characters long")
 	}
 
 	user, err := h.service.Register(c.Request().Context(), req.Name, req.Email, req.Password)
@@ -104,19 +82,6 @@ func (h *Handler) UpdateUser(c echo.Context) error {
 		return err
 	}
 	req.ID = id
-
-	// Validate required fields
-	if req.Name == "" {
-		return echo.NewHTTPError(http.StatusBadRequest, "Name is required")
-	}
-	if req.Email == "" {
-		return echo.NewHTTPError(http.StatusBadRequest, "Email is required")
-	}
-
-	// Validate email format
-	if !util.ValidateEmail(req.Email) {
-		return echo.NewHTTPError(http.StatusBadRequest, "Invalid email format")
-	}
 
 	if err := h.service.Update(c.Request().Context(), req); err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
