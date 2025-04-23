@@ -4,7 +4,11 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	echo "github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
@@ -39,9 +43,8 @@ func main() {
 		}
 	})
 
-	// ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	// defer cancel()
-	ctx := context.Background()
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
 
 	// Connect to MongoDB
 	mongoURI := os.Getenv("MONGO_URI")
@@ -51,7 +54,6 @@ func main() {
 	}
 	dbName := os.Getenv("MONGO_DB_NAME")
 	db := client.Database(dbName)
-
 	fmt.Println("Connected to MongoDB: " + dbName)
 
 	// Initialize services
@@ -67,5 +69,32 @@ func main() {
 	// Background task
 	go task.StartUserCountLogger(ctx, repo)
 
-	e.Logger.Fatal(e.Start(":8080"))
+	// Start server in goroutine
+	go func() {
+		if err := e.Start(":8080"); err != nil && err != http.ErrServerClosed {
+			e.Logger.Fatal("shutting down the server")
+		}
+	}()
+
+	// Wait for shutdown signal (Ctrl+C)
+	<-ctx.Done()
+	log.Println("🛑 Shutdown signal received...")
+
+	// Shutdown logic
+	stop() // Stop receiving more signals
+	ctxShutDown, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	fmt.Println("Stopping Echo server")
+	if err := e.Shutdown(ctxShutDown); err != nil {
+		log.Fatalf("Server forced to shutdown: %v", err)
+	}
+
+	fmt.Println("Disconnecting from MongoDB")
+	if err := client.Disconnect(ctxShutDown); err != nil {
+		log.Fatalf("Mongo disconnect failed: %v", err)
+	}
+
+	log.Println("✅ Graceful shutdown complete")
+
 }
